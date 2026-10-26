@@ -18,11 +18,13 @@ const DRAWINGS: DrawingItem[] = [
 export default function BirthdayScrapbook() {
   const [currentSpread, setCurrentSpread] = useState<number>(0);
   const totalSpreads = 7; // 0 = Cover, 1 = Intro, 2 = Spotlight 1, 3 = Reminders, 4 = Wishes, 5 = Letter, 6 = Final Surprise
+  const totalPages = (totalSpreads - 1) * 2;
   const [pageFlipDirection, setPageFlipDirection] = useState<'forward' | 'backward' | null>(null);
   const [turnTargetSpread, setTurnTargetSpread] = useState<number | null>(null);
   const coverRef = useRef<HTMLDivElement | null>(null);
   const pageLeafRef = useRef<HTMLDivElement | null>(null);
   const turnTimeoutRef = useRef<number | null>(null);
+  const isClosingCover = currentSpread === 1 && turnTargetSpread === 0 && pageFlipDirection === 'backward';
 
   const drawings = DRAWINGS;
   const [activeLightboxImage, setActiveLightboxImage] = useState<string | null>(null);
@@ -36,22 +38,11 @@ export default function BirthdayScrapbook() {
     "Happy Birthday, my love! ♡\n\nI created this little digital scrapbook to celebrate you and save these drawings in a special place forever.\n\nEvery drawing here holds a piece of my affection for you. I hope this year brings you as much happiness as you bring into my life every single day!\n\nAlways here for you ♡"
   );
 
-  const clearTurnStyles = (isCover: boolean) => {
-    const turningElement = isCover ? coverRef.current : pageLeafRef.current;
-    if (!turningElement) return;
-    turningElement.style.removeProperty('transform');
-    turningElement.style.removeProperty('opacity');
-    turningElement.style.removeProperty('transition');
-    turningElement.style.removeProperty('--turn-progress');
-    turningElement.style.removeProperty('--turn-shadow');
-  };
-
-  const finishTurn = (nextSpread: number, isCover: boolean) => {
+  const finishTurn = (nextSpread: number) => {
     if (turnTimeoutRef.current !== null) {
       window.clearTimeout(turnTimeoutRef.current);
       turnTimeoutRef.current = null;
     }
-    clearTurnStyles(isCover);
     setCurrentSpread(nextSpread);
     setTurnTargetSpread(null);
     setPageFlipDirection(null);
@@ -59,42 +50,51 @@ export default function BirthdayScrapbook() {
 
   const handleTurnTransitionEnd = (event: React.TransitionEvent<HTMLDivElement>) => {
     if (event.target !== event.currentTarget || event.propertyName !== 'transform' || !pageFlipDirection) return;
-    finishTurn(currentSpread + (pageFlipDirection === 'forward' ? 1 : -1), currentSpread === 0);
+    finishTurn(
+      currentSpread + (pageFlipDirection === 'forward' ? 1 : -1)
+    );
   };
 
   const turnPage = (direction: 'forward' | 'backward') => {
     if (pageFlipDirection) return;
     const nextSpread = currentSpread + (direction === 'forward' ? 1 : -1);
+    const isCoverTurn = currentSpread === 0 || (currentSpread === 1 && direction === 'backward');
     if (nextSpread < 0 || nextSpread >= totalSpreads) return;
 
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      finishTurn(nextSpread, currentSpread === 0);
+      finishTurn(nextSpread);
       return;
     }
 
-    if (currentSpread > 0) setTurnTargetSpread(nextSpread);
+    setTurnTargetSpread(nextSpread);
     setPageFlipDirection(direction);
     window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
-      const turningElement = currentSpread === 0 ? coverRef.current : pageLeafRef.current;
+      const turningElement = isCoverTurn ? coverRef.current : pageLeafRef.current;
       if (!turningElement) return;
-      turningElement.style.transition = 'transform 860ms cubic-bezier(0.42, 0, 0.2, 1), opacity 860ms ease, filter 860ms ease';
-      applyPageProgress(direction);
+      turningElement.style.transition = isCoverTurn
+        ? 'left 1100ms cubic-bezier(0.22, 1, 0.36, 1), transform 1100ms cubic-bezier(0.42, 0, 0.2, 1)'
+        : 'transform 860ms cubic-bezier(0.42, 0, 0.2, 1)';
+      applyPageProgress(direction, isCoverTurn);
     }));
     turnTimeoutRef.current = window.setTimeout(
-      () => finishTurn(nextSpread, currentSpread === 0),
-      1200
+      () => finishTurn(nextSpread),
+      isCoverTurn ? 1450 : 1200
     );
   };
 
-  const applyPageProgress = (direction: 'forward' | 'backward') => {
-    const isCover = currentSpread === 0;
-    const turningElement = isCover ? coverRef.current : pageLeafRef.current;
+  const applyPageProgress = (direction: 'forward' | 'backward', isCoverTurn = currentSpread === 0) => {
+    const turningElement = isCoverTurn ? coverRef.current : pageLeafRef.current;
     if (!turningElement) return;
 
     const progress = 1;
-    const angle = (isCover ? 145 : 180) * (direction === 'forward' ? -1 : 1);
-    turningElement.style.transform = `rotateY(${angle}deg)`;
-    turningElement.style.opacity = isCover ? `${1 - progress * 0.2}` : '1';
+    if (isCoverTurn) {
+      turningElement.style.left = currentSpread === 0 ? '50%' : '0';
+      turningElement.style.transform = currentSpread === 0 ? 'rotateY(-180deg)' : 'rotateY(0deg)';
+    } else {
+      const angle = 180 * (direction === 'forward' ? -1 : 1);
+      turningElement.style.transform = `rotateY(${angle}deg)`;
+    }
+    turningElement.style.opacity = '1';
     turningElement.style.setProperty('--turn-progress', `${progress}`);
     turningElement.style.setProperty('--turn-shadow', `${progress * 0.22}`);
   };
@@ -120,6 +120,32 @@ export default function BirthdayScrapbook() {
   const visibleSpread = currentSpread === 0
     ? turnTargetSpread ?? currentSpread
     : currentSpread;
+  const pagesInLeftStack = Math.min(Math.max(visibleSpread - 1, 0) * 2, totalPages);
+  const pagesInRightStack = currentSpread === 0
+    ? totalPages
+    : Math.max(totalPages - visibleSpread * 2, 0);
+  const isOpeningCover = currentSpread === 0 && turnTargetSpread === 1 && pageFlipDirection === 'forward';
+  const renderCover = (interactive: boolean) => (
+    <section className="book-closed-cover relative flex h-full w-full flex-col items-center justify-center text-center">
+      <span className="book-cover-emblem" aria-hidden="true">🎂︎</span>
+      <h1 className="book-cover-title">Happy Birthday<br />Sophia!!!</h1>
+      <span className="book-cover-rule" aria-hidden="true" />
+      <p className="book-cover-subtitle">a little gift from me to you</p>
+      <span className="book-cover-flower" aria-hidden="true">✿</span>
+      <span className="book-cover-hint" aria-hidden="true">open here</span>
+      <span className="book-cover-spine" aria-hidden="true" />
+      <span className="book-cover-frame" aria-hidden="true" />
+      {interactive && (
+        <button
+          type="button"
+          onClick={() => turnPage('forward')}
+          disabled={Boolean(pageFlipDirection)}
+          className="book-cover-open-area"
+          aria-label="Open the book"
+        />
+      )}
+    </section>
+  );
 
   const renderTurnPage = (spread: number, side: 'left' | 'right', interactive = false) => {
     const pageClass = 'book-turn-page-content h-full w-full overflow-hidden';
@@ -337,16 +363,45 @@ export default function BirthdayScrapbook() {
       
       {/* MAIN SCRAPBOOK CONTAINER (3D BOOK SPREAD) */}
       <main
-        className={`relative flex items-center justify-center perspective-[1800px] ${visibleSpread === 0 ? 'book-cover-stage my-auto' : 'book-open-stage my-auto'}`}
+        className={`relative flex items-center justify-center perspective-[4800px] ${visibleSpread === 0 ? 'book-cover-stage my-auto' : `book-open-stage my-auto${isClosingCover ? ' is-closing-cover' : ''}`}`}
         aria-label="Interactive birthday scrapbook"
       >
+        <div className="book-page-stacks" aria-hidden="true">
+          {pagesInRightStack > 0 && (
+            <span
+              className="book-page-stack book-page-stack-right"
+              style={{ width: `${Math.max(3, pagesInRightStack * 0.7)}px` }}
+              aria-label={`${pagesInRightStack} pages remaining`}
+            />
+          )}
+          {pagesInLeftStack > 0 && (
+            <span
+              className="book-page-stack book-page-stack-left"
+              style={{ width: `${Math.max(3, pagesInLeftStack * 0.7)}px` }}
+              aria-label={`${pagesInLeftStack} pages already turned`}
+            />
+          )}
+        </div>
         
         {/* SCRAPBOOK SPREAD FRAME */}
         <div
-          className={`relative flex h-full w-full flex-col overflow-hidden bg-[#FAF6F0] ${visibleSpread === 0 ? 'book-cover-shell' : 'book-open-shell'}`}
-          ref={visibleSpread === 0 ? coverRef : null}
-          onTransitionEnd={currentSpread === 0 ? handleTurnTransitionEnd : undefined}
+          className={`relative flex h-full w-full flex-col overflow-hidden bg-[#FAF6F0] ${visibleSpread === 0 ? 'book-cover-shell' : `book-open-shell${isOpeningCover || isClosingCover ? ' is-cover-turning' : ''}${isOpeningCover ? ' is-opening-cover' : ''}${isClosingCover ? ' is-closing-cover' : ''}`}`}
         >
+          {(isOpeningCover || isClosingCover) && (
+            <div
+              className={`book-cover-leaf${isClosingCover ? ' book-cover-leaf-closing' : ''}`}
+              ref={coverRef}
+              aria-hidden="true"
+              onTransitionEnd={handleTurnTransitionEnd}
+            >
+              <div className="book-cover-leaf-face book-cover-leaf-front book-cover-shell">
+                {renderCover(false)}
+              </div>
+              <div className="book-cover-leaf-face book-cover-leaf-back">
+                {renderTurnPage(1, 'left')}
+              </div>
+            </div>
+          )}
           
           {currentSpread > 0 && turnTargetSpread !== null && pageFlipDirection && (
             <div
@@ -359,7 +414,7 @@ export default function BirthdayScrapbook() {
               )}
             </div>
           )}
-          {visibleSpread > 0 && pageFlipDirection && (
+          {currentSpread > 0 && visibleSpread > 0 && pageFlipDirection && !isClosingCover && (
             <div
               className={`book-page-leaf book-page-leaf-${pageFlipDirection}`}
               ref={pageLeafRef}
@@ -377,35 +432,25 @@ export default function BirthdayScrapbook() {
 
           {/* ================= SPREAD 0: COVER SPREAD ================= */}
           {visibleSpread === 0 && (
-            <section className="book-closed-cover relative flex h-full w-full flex-col items-center justify-center text-center">
-              <span className="book-cover-emblem" aria-hidden="true">🎂︎</span>
-              <h1 className="book-cover-title">Happy Birthday<br />Sophia!!!</h1>
-              <span className="book-cover-rule" aria-hidden="true" />
-              <p className="book-cover-subtitle">a little gift from me to you</p>
-              <span className="book-cover-flower" aria-hidden="true">✿</span>
-              <span className="book-cover-hint" aria-hidden="true">open here</span>
-              <span className="book-cover-spine" aria-hidden="true" />
-              <span className="book-cover-frame" aria-hidden="true" />
-              <button
-                type="button"
-                onClick={() => turnPage('forward')}
-                disabled={Boolean(pageFlipDirection)}
-                className="book-cover-open-area"
-                aria-label="Open the book"
-              />
+            <>
+              {renderCover(true)}
               <button
                 type="button"
                 className="page-turn-zone page-turn-zone-right"
                 onClick={() => turnPage('forward')}
                 aria-label="Open the book"
               />
-            </section>
+            </>
           )}
 
           {/* ================= SPREAD 1: INTRODUCTION ================= */}
           {visibleSpread === 1 && (
             <div className="flex h-full w-full">
-              <div className="h-full w-1/2">{renderTurnPage(1, 'left', true)}</div>
+              {isOpeningCover || isClosingCover ? (
+                <div className="book-cover-underlay h-full w-1/2" aria-hidden="true" />
+              ) : (
+                <div className="h-full w-1/2">{renderTurnPage(1, 'left', true)}</div>
+              )}
               <div className="h-full w-1/2">{renderTurnPage(1, 'right', true)}</div>
             </div>
           )}
@@ -450,7 +495,7 @@ export default function BirthdayScrapbook() {
             </div>
           )}
 
-          {visibleSpread > 0 && (
+          {visibleSpread > 0 && !isOpeningCover && !isClosingCover && (
             <>
               <button
                 type="button"
@@ -470,8 +515,13 @@ export default function BirthdayScrapbook() {
               >
                 <ChevronRight aria-hidden="true" />
               </button>
-              <span className="book-page-count" aria-live="polite">
-                {currentSpread} / {totalSpreads - 1}
+              <span
+                className="book-page-count"
+                aria-live="polite"
+                aria-label={`Pages ${visibleSpread * 2 - 1} and ${visibleSpread * 2} of ${totalPages}; ${pagesInRightStack} pages remaining`}
+              >
+                <span className="book-page-number book-page-number-left">{visibleSpread * 2 - 1}</span>
+                <span className="book-page-number book-page-number-right">{visibleSpread * 2}</span>
               </span>
             </>
           )}
