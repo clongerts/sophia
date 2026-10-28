@@ -88,7 +88,7 @@ export default function BirthdayScrapbook() {
 
     const progress = 1;
     if (isCoverTurn) {
-      turningElement.style.left = currentSpread === 0 ? '50%' : '0';
+      turningElement.style.left = currentSpread === 0 ? 'var(--book-cover-width)' : '0';
       turningElement.style.transform = currentSpread === 0 ? 'rotateY(-180deg)' : 'rotateY(0deg)';
     } else {
       const angle = 180 * (direction === 'forward' ? -1 : 1);
@@ -363,7 +363,7 @@ export default function BirthdayScrapbook() {
       
       {/* MAIN SCRAPBOOK CONTAINER (3D BOOK SPREAD) */}
       <main
-        className={`relative flex items-center justify-center perspective-[4800px] ${visibleSpread === 0 ? 'book-cover-stage my-auto' : `book-open-stage my-auto${isClosingCover ? ' is-closing-cover' : ''}`}`}
+        className={`relative flex items-center justify-center perspective-[4800px] ${visibleSpread === 0 ? 'book-cover-stage my-auto' : `book-open-stage my-auto${isClosingCover ? ' is-closing-cover' : ''}${isOpeningCover ? ' is-opening-cover' : ''}`}`}
         aria-label="Interactive birthday scrapbook"
       >
         <div className="book-page-stacks" aria-hidden="true">
@@ -445,53 +445,53 @@ export default function BirthdayScrapbook() {
 
           {/* ================= SPREAD 1: INTRODUCTION ================= */}
           {visibleSpread === 1 && (
-            <div className="flex h-full w-full">
+            <div className="book-spread-pages">
               {isOpeningCover || isClosingCover ? (
-                <div className="book-cover-underlay h-full w-1/2" aria-hidden="true" />
+                <div className="book-spread-page book-cover-underlay" aria-hidden="true" />
               ) : (
-                <div className="h-full w-1/2">{renderTurnPage(1, 'left', true)}</div>
+                <div className="book-spread-page">{renderTurnPage(1, 'left', true)}</div>
               )}
-              <div className="h-full w-1/2">{renderTurnPage(1, 'right', true)}</div>
+              <div className="book-spread-page">{renderTurnPage(1, 'right', true)}</div>
             </div>
           )}
 
           {/* ================= SPREAD 2: ARTWORK SPOTLIGHT 1 ================= */}
           {visibleSpread === 2 && (
-            <div className="flex h-full w-full">
-              <div className="h-full w-1/2">{renderTurnPage(2, 'left', true)}</div>
-              <div className="h-full w-1/2">{renderTurnPage(2, 'right', true)}</div>
+            <div className="book-spread-pages">
+              <div className="book-spread-page">{renderTurnPage(2, 'left', true)}</div>
+              <div className="book-spread-page">{renderTurnPage(2, 'right', true)}</div>
             </div>
           )}
 
           {/* ================= SPREAD 3: REMINDERS & MEMORIES ================= */}
           {visibleSpread === 3 && (
-            <div className="flex h-full w-full">
-              <div className="h-full w-1/2">{renderTurnPage(3, 'left', true)}</div>
-              <div className="h-full w-1/2">{renderTurnPage(3, 'right', true)}</div>
+            <div className="book-spread-pages">
+              <div className="book-spread-page">{renderTurnPage(3, 'left', true)}</div>
+              <div className="book-spread-page">{renderTurnPage(3, 'right', true)}</div>
             </div>
           )}
 
           {/* ================= SPREAD 4: A PAGE FULL OF WISHES ================= */}
           {visibleSpread === 4 && (
-            <div className="flex h-full w-full">
-              <div className="h-full w-1/2">{renderTurnPage(4, 'left', true)}</div>
-              <div className="h-full w-1/2">{renderTurnPage(4, 'right', true)}</div>
+            <div className="book-spread-pages">
+              <div className="book-spread-page">{renderTurnPage(4, 'left', true)}</div>
+              <div className="book-spread-page">{renderTurnPage(4, 'right', true)}</div>
             </div>
           )}
 
           {/* ================= SPREAD 5: A LITTLE BIRTHDAY LETTER ================= */}
           {visibleSpread === 5 && (
-            <div className="flex h-full w-full">
-              <div className="h-full w-1/2">{renderTurnPage(5, 'left')}</div>
-              <div className="h-full w-1/2">{renderTurnPage(5, 'right', true)}</div>
+            <div className="book-spread-pages">
+              <div className="book-spread-page">{renderTurnPage(5, 'left')}</div>
+              <div className="book-spread-page">{renderTurnPage(5, 'right', true)}</div>
             </div>
           )}
 
           {/* ================= SPREAD 6: ONE LAST LITTLE SURPRISE ================= */}
           {visibleSpread === 6 && (
-            <div className="flex h-full w-full">
-              <div className="h-full w-1/2">{renderTurnPage(6, 'left')}</div>
-              <div className="h-full w-1/2">{renderTurnPage(6, 'right', true)}</div>
+            <div className="book-spread-pages">
+              <div className="book-spread-page">{renderTurnPage(6, 'left')}</div>
+              <div className="book-spread-page">{renderTurnPage(6, 'right', true)}</div>
             </div>
           )}
 
